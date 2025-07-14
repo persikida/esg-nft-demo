@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Register Decarbonization Project</title>
+  <script src="https://cdn.jsdelivr.net/npm/ethers@6.7.0/dist/ethers.umd.min.js"></script>
+  <style>
+    body {
+      font-family: sans-serif;
+      background: #f0f4f8;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+    .card {
+      background: white;
+      padding: 2rem;
+      border-radius: 12px;
+      box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+      width: 400px;
+    }
+    .card h2 {
+      font-size: 1.25rem;
+      margin-bottom: 1rem;
+    }
+    input, textarea, button {
+      width: 100%;
+      margin-top: 0.75rem;
+      padding: 0.75rem;
+      font-size: 1rem;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+    }
+    button {
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+    #output {
+      margin-top: 1rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <button id="connectButton">Connect Wallet</button>
+
+    <h2>Register your decarbonization project on-chain</h2>
+
+    <input type="text" id="name" placeholder="Project Name" required />
+    <textarea id="description" placeholder="Description"></textarea>
+    <input type="text" id="location" placeholder="Location" required />
+    <input type="file" id="image" accept="image/*" />
+
+    <button id="mintButton">Mint</button>
+
+    <div id="output"></div>
+  </div>
+
+  <script>
+    let signer;
+    const contractAddress = "0xYourContractAddress"; // Replace with your real contract address
+    const contractABI = [
+      "function mintNFT(address recipient, string memory tokenURI) public returns (uint256)"
+    ];
+
+    document.getElementById("connectButton").addEventListener("click", async () => {
+      if (typeof window.ethereum !== 'undefined') {
+        const provider = new ethers.BrowserProvider(window.ethereum);
+        await provider.send("eth_requestAccounts", []);
+        signer = await provider.getSigner();
+        document.getElementById("connectButton").innerText = "Wallet Connected";
+      } else {
+        alert("MetaMask is not installed!");
+      }
+    });
+
+    document.getElementById("mintButton").addEventListener("click", async () => {
+      const name = document.getElementById("name").value;
+      const description = document.getElementById("description").value;
+      const location = document.getElementById("location").value;
+      const imageInput = document.getElementById("image");
+
+      if (!signer || !name || !location || imageInput.files.length === 0) {
+        alert("Please fill out all fields and connect wallet.");
+        return;
+      }
+
+      const file = imageInput.files[0];
+      const reader = new FileReader();
+      reader.onload = async function () {
+        const imageData = reader.result;
+
+        const metadata = {
+          name: name,
+          description: description,
+          location: location,
+          image: imageData
+        };
+
+        const blob = new Blob([JSON.stringify(metadata)], { type: "application/json" });
+        const tokenURI = URL.createObjectURL(blob); // Simulated IPFS URL
+
+        const contract = new ethers.Contract(contractAddress, contractABI, signer);
+        const tx = await contract.mintNFT(await signer.getAddress(), tokenURI);
+        const receipt = await tx.wait();
+
+        document.getElementById("output").innerHTML = `
+          <p>✅ Minted! TX Hash: <a href="https://sepolia.etherscan.io/tx/${receipt.hash}" target="_blank">${receipt.hash}</a></p>
+          <p>📄 <a href="${tokenURI}" target="_blank">View Metadata</a></p>
+        `;
+      };
+      reader.readAsDataURL(file);
+    });
+  </script>
+</body>
+</html>
+
+
