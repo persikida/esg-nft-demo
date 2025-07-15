@@ -7,6 +7,7 @@ Scheme:
 
 ![Scheme implementation](./scheme.png)
 
+![Example of implementation](./example.png)
 
 ---
 
