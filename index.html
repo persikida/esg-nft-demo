@@ -1,134 +1,51 @@
 <!DOCTYPE html>
-<html lang="en" class="light">
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Register Decarbonization Project</title>
   <script src="https://cdn.jsdelivr.net/npm/ethers@6.7.0/dist/ethers.umd.min.js"></script>
   <style>
-    :root {
-      --bg-light: #f0f4f8;
-      --card-light: #ffffff;
-      --text-light: #111;
-      --input-light: #fff;
-      --border-light: #ccc;
-
-      --bg-dark: #121212;
-      --card-dark: #1e1e1e;
-      --text-dark: #f5f5f5;
-      --input-dark: #2c2c2c;
-      --border-dark: #444;
-
-      --primary: #4CAF50;
-      --primary-disabled: #555;
-    }
-
-    html.light {
-      --bg: var(--bg-light);
-      --card: var(--card-light);
-      --text: var(--text-light);
-      --input: var(--input-light);
-      --border: var(--border-light);
-    }
-
-    html.dark {
-      --bg: var(--bg-dark);
-      --card: var(--card-dark);
-      --text: var(--text-dark);
-      --input: var(--input-dark);
-      --border: var(--border-dark);
-    }
-
     body {
-      position: relative;
-      margin: 0;
       font-family: sans-serif;
-      background: var(--bg);
-      color: var(--text);
+      background: #f0f4f8;
       display: flex;
       justify-content: center;
       align-items: center;
       height: 100vh;
-      transition: background 0.3s, color 0.3s;
     }
-
-    .theme-toggle {
-      position: fixed;
-      top: 1rem;
-      right: 1rem;
-      background: none;
-      border: none;
-      font-size: 1.5rem;
-      cursor: pointer;
-      z-index: 1000;
-      color: var(--text);
-      transition: transform 0.2s ease, color 0.3s;
-    }
-
-    .theme-toggle:hover {
-      transform: scale(1.2);
-    }
-
     .card {
-      background: var(--card);
+      background: white;
       padding: 2rem;
       border-radius: 12px;
-      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+      box-shadow: 0 5px 15px rgba(0,0,0,0.1);
       width: 400px;
-      transition: background 0.3s, color 0.3s;
     }
-
     .card h2 {
       font-size: 1.25rem;
       margin-bottom: 1rem;
     }
-
     input, textarea, button {
       width: 100%;
       margin-top: 0.75rem;
       padding: 0.75rem;
       font-size: 1rem;
       border-radius: 6px;
-      border: 1px solid var(--border);
-      background: var(--input);
-      color: var(--text);
-      transition: background 0.3s, border 0.3s, color 0.3s;
+      border: 1px solid #ccc;
     }
-
-    input::placeholder,
-    textarea::placeholder {
-      color: #888;
-    }
-
     button {
-      background-color: var(--primary);
+      background-color: #4CAF50;
       color: white;
       border: none;
       cursor: pointer;
-      transition: background-color 0.3s;
     }
-
-    button:disabled {
-      background-color: var(--primary-disabled);
-      cursor: not-allowed;
-    }
-
     #output {
       margin-top: 1rem;
-      font-size: 0.95rem;
-    }
-
-    a {
-      color: #66ffcc;
     }
   </style>
 </head>
 <body>
-  <button id="themeToggle" class="theme-toggle" title="Toggle Theme">🌙</button>
-
   <div class="card">
-    <button id="connectButton">Connect Wallet</button>
-
     <h2>Register your decarbonization project on-chain</h2>
 
     <input type="text" id="name" placeholder="Project Name" required />
@@ -136,79 +53,89 @@
     <input type="text" id="location" placeholder="Location" required />
     <input type="file" id="image" accept="image/*" />
 
-    <button id="mintButton" disabled>Mint</button>
+    <button id="mintButton">Mint</button>
 
     <div id="output"></div>
   </div>
 
   <script>
-    let signer;
-    const contractAddress = "0xd9145CCE52D386f254917e481eB44e9943F39138";
+    const contractAddress = "0x..........."; // Replace with actual UZH contract address
     const contractABI = [
       "function mintNFT(address recipient, string memory tokenURI) public returns (uint256)"
     ];
 
-    const connectButton = document.getElementById("connectButton");
-    const mintButton = document.getElementById("mintButton");
+    const provider = new ethers.JsonRpcProvider("http://130.60.24.234:8545");
+    const signer = new ethers.Wallet("0xFC0F2fd84d01a9D0F0217949fE5be9009b3EBF8f", provider); // Replace with actual private key
 
-    connectButton.addEventListener("click", async () => {
-      if (typeof window.ethereum !== 'undefined') {
-        const provider = new ethers.BrowserProvider(window.ethereum);
-        await provider.send("eth_requestAccounts", []);
-        signer = await provider.getSigner();
-        connectButton.innerText = "Wallet Connected";
-        mintButton.disabled = false;
-      } else {
-        alert("MetaMask is not installed!");
-      }
-    });
+    const pinataJWT = "Bearer .....7oDjaMf3Zg9d7CjCcSyHTyR8-.Q"; // Replace with your JWT
 
-    mintButton.addEventListener("click", async () => {
+    document.getElementById("mintButton").addEventListener("click", async () => {
       const name = document.getElementById("name").value;
       const description = document.getElementById("description").value;
       const location = document.getElementById("location").value;
       const imageInput = document.getElementById("image");
 
-      if (!signer || !name || !location || imageInput.files.length === 0) {
-        alert("Please fill out all fields and connect wallet.");
+      if (!name || !location || imageInput.files.length === 0) {
+        alert("Please fill out all fields.");
         return;
       }
 
       const file = imageInput.files[0];
-      const reader = new FileReader();
+      const formData = new FormData();
+      formData.append("file", file);
 
-      reader.onload = async function () {
-        const imageData = reader.result;
+      const metadata = JSON.stringify({
+        name: name,
+        keyvalues: {
+          description: description,
+          location: location
+        }
+      });
 
-        const metadata = {
-          name,
-          description,
-          location,
-          image: imageData
-        };
+      formData.append("pinataMetadata", metadata);
+      formData.append("pinataOptions", JSON.stringify({ cidVersion: 1 }));
 
-        const blob = new Blob([JSON.stringify(metadata)], { type: "application/json" });
-        const tokenURI = URL.createObjectURL(blob);
+      const imageRes = await fetch("https://api.pinata.cloud/pinning/pinFileToIPFS", {
+        method: "POST",
+        headers: {
+          Authorization: pinataJWT
+        },
+        body: formData
+      });
 
-        const contract = new ethers.Contract(contractAddress, contractABI, signer);
-        const tx = await contract.mintNFT(await signer.getAddress(), tokenURI);
-        const receipt = await tx.wait();
+      const imageData = await imageRes.json();
+      const imageHash = imageData.IpfsHash;
 
-        document.getElementById("output").innerHTML = `
-          <p>✅ Minted! TX Hash: <a href="http://130.60.24.234:4000/tx/${receipt.hash}" target="_blank">${receipt.hash}</a></p>
-          <p>📄 <a href="${tokenURI}" target="_blank">View Metadata</a></p>
-        `;
+      const jsonMetadata = {
+        name: name,
+        description: description,
+        location: location,
+        image: `https://gateway.pinata.cloud/ipfs/${imageHash}`
       };
-      reader.readAsDataURL(file);
-    });
 
-    // Theme toggle logic
-    const themeBtn = document.getElementById("themeToggle");
-    themeBtn.addEventListener("click", () => {
-      const html = document.documentElement;
-      html.classList.toggle("dark");
-      html.classList.toggle("light");
-      themeBtn.textContent = html.classList.contains("dark") ? "☀️" : "🌙";
+      const metadataRes = await fetch("https://api.pinata.cloud/pinning/pinJSONToIPFS", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: pinataJWT
+        },
+        body: JSON.stringify({
+          pinataMetadata: { name: `${name}_metadata` },
+          pinataContent: jsonMetadata
+        })
+      });
+
+      const metadataJson = await metadataRes.json();
+      const tokenURI = `https://gateway.pinata.cloud/ipfs/${metadataJson.IpfsHash}`;
+
+      const contract = new ethers.Contract(contractAddress, contractABI, signer);
+      const tx = await contract.mintNFT(await signer.getAddress(), tokenURI);
+      const receipt = await tx.wait();
+
+      document.getElementById("output").innerHTML = `
+        <p>✅ Minted! TX Hash: <code>${receipt.hash}</code></p>
+        <p>📄 <a href="${tokenURI}" target="_blank">View Metadata</a></p>
+      `;
     });
   </script>
 </body>
