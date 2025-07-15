@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Upload NFT Metadata to Pinata</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      background: #f9fafb;
+      display: flex;
+      justify-content: center;
+      padding: 2rem;
+    }
+    .container {
+      background: white;
+      padding: 2rem;
+      border-radius: 12px;
+      box-shadow: 0 0 12px rgba(0,0,0,0.1);
+      max-width: 600px;
+      width: 100%;
+    }
+    h2 {
+      margin-bottom: 1rem;
+    }
+    input, textarea, button {
+      width: 100%;
+      padding: 0.75rem;
+      margin-top: 0.5rem;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+      font-size: 1rem;
+    }
+    button {
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      cursor: pointer;
+      margin-top: 1rem;
+    }
+    #output {
+      margin-top: 1rem;
+      word-break: break-all;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>Upload NFT Metadata to Pinata</h2>
+    <input type="text" id="name" placeholder="Name" />
+    <textarea id="description" placeholder="Description"></textarea>
+    <input type="text" id="image" placeholder="Image URL (https://...)" />
+    <input type="text" id="location" placeholder="Location" />
+    <input type="text" id="emissions" placeholder="Emissions Avoided (e.g. 1,600,000 kg CO2e)" />
+    <input type="text" id="verifier" placeholder="Verifier (e.g. Verra)" />
+    <input type="date" id="lastVerified" placeholder="Last Verified Date" />
+    <input type="text" id="dataHash" placeholder="Data Hash (e.g. SHA-256)" />
+
+    <button onclick="uploadToPinata()">Upload Metadata</button>
+    <div id="output"></div>
+  </div>
+
+  <script>
+    const pinataJWT = "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySW5mb3JtYXRpb24iOnsiaWQiOiIxYzA0MTM0Zi1mODljLTQ1ZTItOWU2Zi1mNzZhMzFiNTU5NWQiLCJlbWFpbCI6Im1ib2lkYWRhZXZAZ21haWwuY29tIiwiZW1haWxfdmVyaWZpZWQiOnRydWUsInBpbl9wb2xpY3kiOnsicmVnaW9ucyI6W3siZGVzaXJlZFJlcGxpY2F0aW9uQ291bnQiOjEsImlkIjoiRlJBMSJ9LHsiZGVzaXJlZFJlcGxpY2F0aW9uQ291bnQiOjEsImlkIjoiTllDMSJ9XSwidmVyc2lvbiI6MX0sIm1mYV9lbmFibGVkIjpmYWxzZSwic3RhdHVzIjoiQUNUSVZFIn0sImF1dGhlbnRpY2F0aW9uVHlwZSI6InNjb3BlZEtleSIsInNjb3BlZEtleUtleSI6IjYxZDBmMzY2ZjJhYjQ4YTRkZWI0Iiwic2NvcGVkS2V5U2VjcmV0IjoiZWU3NmY0ODZmYzFkZmUxNTE0OWE1ZjQ5MDNjM2I5ODJkOGUyZDBmYWEwZDAyZWU0MDhlYzlkYjk1OGU1ZTg5ZiIsImV4cCI6MTc4NDEyMTQxM30.BPLZXd3Br2aNBc8U4oIbCp2nJ1aFmuiCpjdKVWNTL8c"
+
+    async function uploadToPinata() {
+      const metadata = {
+        name: document.getElementById("name").value,
+        description: document.getElementById("description").value,
+        image: document.getElementById("image").value,
+        attributes: [
+          { trait_type: "Location", value: document.getElementById("location").value },
+          { trait_type: "Emissions Avoided", value: document.getElementById("emissions").value },
+          { trait_type: "Verifier", value: document.getElementById("verifier").value },
+          { trait_type: "Last Verified", value: document.getElementById("lastVerified").value },
+          { trait_type: "Data Hash", value: document.getElementById("dataHash").value },
+        ]
+      };
+
+      try {
+        const res = await fetch("https://api.pinata.cloud/pinning/pinJSONToIPFS", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: pinataJWT
+          },
+          body: JSON.stringify({
+            pinataMetadata: { name: metadata.name + "_metadata" },
+            pinataContent: metadata
+          })
+        });
+
+        const data = await res.json();
+        if (data.IpfsHash) {
+          document.getElementById("output").innerHTML = `✅ Uploaded!<br>🔗 <a href="https://gateway.pinata.cloud/ipfs/${data.IpfsHash}" target="_blank">View Metadata</a>`;
+        } else {
+          document.getElementById("output").textContent = "❌ Upload failed. Check console for details.";
+          console.error(data);
+        }
+      } catch (err) {
+        console.error(err);
+        document.getElementById("output").textContent = "❌ Error uploading to Pinata.";
+      }
+    }
+  </script>
+</body>
+</html>
