@@ -3,6 +3,11 @@
 A simple HTML + JavaScript frontend for minting decarbonization projects as NFTs on-chain.  
 Users can register their project name, description, location, and an image — all bundled into metadata and minted to the blockchain.
 
+Scheme:
+
+![Scheme implementation](./scheme.png)
+
+
 ---
 
 ## 📦 Features
