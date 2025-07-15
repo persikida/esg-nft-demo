@@ -38,6 +38,11 @@
       color: white;
       border: none;
       cursor: pointer;
+      transition: background-color 0.3s;
+    }
+    button:disabled {
+      background-color: #ccc;
+      cursor: not-allowed;
     }
     #output {
       margin-top: 1rem;
@@ -55,30 +60,73 @@
     <input type="text" id="location" placeholder="Location" required />
     <input type="file" id="image" accept="image/*" />
 
-    <button id="mintButton">Mint</button>
+    <button id="mintButton" disabled>Mint</button>
 
     <div id="output"></div>
   </div>
 
   <script>
     let signer;
-    const contractAddress = "0xYourContractAddress"; // Replace with your real contract address
+    const contractAddress = "0xd9145CCE52D386f254917e481eB44e9943F39138"; // Укажи свой адрес контракта
+    const chainId = 710;
     const contractABI = [
       "function mintNFT(address recipient, string memory tokenURI) public returns (uint256)"
     ];
 
-    document.getElementById("connectButton").addEventListener("click", async () => {
+    const connectButton = document.getElementById("connectButton");
+    const mintButton = document.getElementById("mintButton");
+
+    connectButton.addEventListener("click", async () => {
       if (typeof window.ethereum !== 'undefined') {
+        await window.ethereum.request({ method: 'eth_requestAccounts' });
+        const network = await window.ethereum.request({ method: 'eth_chainId' });
+
+        if (parseInt(network, 16) !== chainId) {
+          try {
+            await window.ethereum.request({
+              method: 'wallet_switchEthereumChain',
+              params: [{ chainId: '0x2C6' }] // 710 в hex
+            });
+          } catch (switchError) {
+            // Если сеть не добавлена в MetaMask
+            if (switchError.code === 4902) {
+              try {
+                await window.ethereum.request({
+                  method: 'wallet_addEthereumChain',
+                  params: [{
+                    chainId: '0x2C6',
+                    chainName: 'UZH_ETH_PoS',
+                    nativeCurrency: {
+                      name: 'UZHETHs',
+                      symbol: 'UZETHs',
+                      decimals: 18
+                    },
+                    rpcUrls: ['http://rpc-uzheths.blockchain-group.ch:8546'],
+                    blockExplorerUrls: ['http://130.60.24.234:4000']
+                  }]
+                });
+              } catch (addError) {
+                alert("Could not add chain: " + addError.message);
+                return;
+              }
+            } else {
+              alert("Could not switch network: " + switchError.message);
+              return;
+            }
+          }
+        }
+
         const provider = new ethers.BrowserProvider(window.ethereum);
-        await provider.send("eth_requestAccounts", []);
         signer = await provider.getSigner();
-        document.getElementById("connectButton").innerText = "Wallet Connected";
+        connectButton.innerText = "Wallet Connected";
+
+        mintButton.disabled = false;
       } else {
         alert("MetaMask is not installed!");
       }
     });
 
-    document.getElementById("mintButton").addEventListener("click", async () => {
+    mintButton.addEventListener("click", async () => {
       const name = document.getElementById("name").value;
       const description = document.getElementById("description").value;
       const location = document.getElementById("location").value;
@@ -91,25 +139,26 @@
 
       const file = imageInput.files[0];
       const reader = new FileReader();
+
       reader.onload = async function () {
         const imageData = reader.result;
 
         const metadata = {
-          name: name,
-          description: description,
-          location: location,
+          name,
+          description,
+          location,
           image: imageData
         };
 
         const blob = new Blob([JSON.stringify(metadata)], { type: "application/json" });
-        const tokenURI = URL.createObjectURL(blob); // Simulated IPFS URL
+        const tokenURI = URL.createObjectURL(blob);
 
         const contract = new ethers.Contract(contractAddress, contractABI, signer);
         const tx = await contract.mintNFT(await signer.getAddress(), tokenURI);
         const receipt = await tx.wait();
 
         document.getElementById("output").innerHTML = `
-          <p>✅ Minted! TX Hash: <a href="https://sepolia.etherscan.io/tx/${receipt.hash}" target="_blank">${receipt.hash}</a></p>
+          <p>✅ Minted! TX Hash: <a href="http://130.60.24.234:4000/tx/${receipt.hash}" target="_blank">${receipt.hash}</a></p>
           <p>📄 <a href="${tokenURI}" target="_blank">View Metadata</a></p>
         `;
       };
@@ -118,5 +167,3 @@
   </script>
 </body>
 </html>
-
-
