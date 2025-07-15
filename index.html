@@ -8,68 +8,107 @@
   <style>
     body {
       font-family: sans-serif;
-      background: #f0f4f8;
+      background: #f3f4f6;
       display: flex;
       justify-content: center;
       align-items: center;
       height: 100vh;
     }
+    .container {
+      width: 100%;
+      max-width: 500px;
+    }
     .card {
       background: white;
       padding: 2rem;
       border-radius: 12px;
-      box-shadow: 0 5px 15px rgba(0,0,0,0.1);
-      width: 400px;
+      box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
     }
-    .card h2 {
-      font-size: 1.25rem;
-      margin-bottom: 1rem;
+    h2 {
+      font-size: 1.5rem;
+      margin-bottom: 1.5rem;
+      text-align: center;
     }
     input, textarea, button {
       width: 100%;
-      margin-top: 0.75rem;
+      margin-top: 1rem;
       padding: 0.75rem;
       font-size: 1rem;
       border-radius: 6px;
       border: 1px solid #ccc;
     }
     button {
-      background-color: #4CAF50;
+      background-color: #16a34a;
       color: white;
       border: none;
       cursor: pointer;
     }
+    #walletAddress {
+      text-align: center;
+      margin-top: 1rem;
+      font-size: 0.9rem;
+      color: #4b5563;
+    }
     #output {
       margin-top: 1rem;
+    }
+    .top-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1rem;
     }
   </style>
 </head>
 <body>
-  <div class="card">
-    <h2>Register your decarbonization project on-chain</h2>
-
-    <input type="text" id="name" placeholder="Project Name" required />
-    <textarea id="description" placeholder="Description"></textarea>
-    <input type="text" id="location" placeholder="Location" required />
-    <input type="file" id="image" accept="image/*" />
-
-    <button id="mintButton">Mint</button>
-
-    <div id="output"></div>
+  <div class="container">
+    <div class="card">
+      <div class="top-bar">
+        <button id="connectWallet">Connect Wallet</button>
+        <div id="walletAddress">Not connected</div>
+      </div>
+      <h2>Register your decarbonization project on-chain</h2>
+      <input type="text" id="name" placeholder="Project Name" required />
+      <textarea id="description" placeholder="Description"></textarea>
+      <input type="text" id="location" placeholder="Location" required />
+      <input type="file" id="image" accept="image/*" />
+      <button id="mintButton">Mint</button>
+      <div id="output"></div>
+    </div>
   </div>
 
   <script>
-    const contractAddress = "0x..........."; // Replace with actual UZH contract address
+    let signer;
+    let provider;
+    let userAddress;
+
+    const connectWallet = async () => {
+      if (typeof window.ethereum !== 'undefined') {
+        provider = new ethers.BrowserProvider(window.ethereum);
+        await provider.send("eth_requestAccounts", []);
+        signer = await provider.getSigner();
+        userAddress = await signer.getAddress();
+        document.getElementById("walletAddress").innerText = userAddress;
+      } else {
+        alert("Metamask is not installed.");
+      }
+    };
+
+    document.getElementById("connectWallet").addEventListener("click", connectWallet);
+
+    const contractAddress = "0xd9145CCE52D386f254917e481eB44e9943F39138"; // Replace with UZH address
     const contractABI = [
       "function mintNFT(address recipient, string memory tokenURI) public returns (uint256)"
     ];
 
-    const provider = new ethers.JsonRpcProvider("http://130.60.24.234:8545");
-    const signer = new ethers.Wallet("0xFC0F2fd84d01a9D0F0217949fE5be9009b3EBF8f", provider); // Replace with actual private key
-
-    const pinataJWT = "Bearer .....7oDjaMf3Zg9d7CjCcSyHTyR8-.Q"; // Replace with your JWT
+    const pinataJWT = "Bearer YOUR_PINATA_JWT_HERE"; // Replace with your Pinata JWT
 
     document.getElementById("mintButton").addEventListener("click", async () => {
+      if (!signer) {
+        alert("Please connect your wallet first.");
+        return;
+      }
+
       const name = document.getElementById("name").value;
       const description = document.getElementById("description").value;
       const location = document.getElementById("location").value;
@@ -84,32 +123,18 @@
       const formData = new FormData();
       formData.append("file", file);
 
-      const metadata = JSON.stringify({
-        name: name,
-        keyvalues: {
-          description: description,
-          location: location
-        }
-      });
-
-      formData.append("pinataMetadata", metadata);
-      formData.append("pinataOptions", JSON.stringify({ cidVersion: 1 }));
-
       const imageRes = await fetch("https://api.pinata.cloud/pinning/pinFileToIPFS", {
         method: "POST",
-        headers: {
-          Authorization: pinataJWT
-        },
+        headers: { Authorization: pinataJWT },
         body: formData
       });
-
       const imageData = await imageRes.json();
       const imageHash = imageData.IpfsHash;
 
-      const jsonMetadata = {
-        name: name,
-        description: description,
-        location: location,
+      const metadata = {
+        name,
+        description,
+        location,
         image: `https://gateway.pinata.cloud/ipfs/${imageHash}`
       };
 
@@ -121,10 +146,9 @@
         },
         body: JSON.stringify({
           pinataMetadata: { name: `${name}_metadata` },
-          pinataContent: jsonMetadata
+          pinataContent: metadata
         })
       });
-
       const metadataJson = await metadataRes.json();
       const tokenURI = `https://gateway.pinata.cloud/ipfs/${metadataJson.IpfsHash}`;
 
