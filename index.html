@@ -1,55 +1,131 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="light">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Register Decarbonization Project</title>
   <script src="https://cdn.jsdelivr.net/npm/ethers@6.7.0/dist/ethers.umd.min.js"></script>
   <style>
+    :root {
+      --bg-light: #f0f4f8;
+      --card-light: #ffffff;
+      --text-light: #111;
+      --input-light: #fff;
+      --border-light: #ccc;
+
+      --bg-dark: #121212;
+      --card-dark: #1e1e1e;
+      --text-dark: #f5f5f5;
+      --input-dark: #2c2c2c;
+      --border-dark: #444;
+
+      --primary: #4CAF50;
+      --primary-disabled: #555;
+    }
+
+    html.light {
+      --bg: var(--bg-light);
+      --card: var(--card-light);
+      --text: var(--text-light);
+      --input: var(--input-light);
+      --border: var(--border-light);
+    }
+
+    html.dark {
+      --bg: var(--bg-dark);
+      --card: var(--card-dark);
+      --text: var(--text-dark);
+      --input: var(--input-dark);
+      --border: var(--border-dark);
+    }
+
     body {
+      position: relative;
+      margin: 0;
       font-family: sans-serif;
-      background: #f0f4f8;
+      background: var(--bg);
+      color: var(--text);
       display: flex;
       justify-content: center;
       align-items: center;
       height: 100vh;
+      transition: background 0.3s, color 0.3s;
     }
+
+    .theme-toggle {
+      position: fixed;
+      top: 1rem;
+      right: 1rem;
+      background: none;
+      border: none;
+      font-size: 1.5rem;
+      cursor: pointer;
+      z-index: 1000;
+      color: var(--text);
+      transition: transform 0.2s ease, color 0.3s;
+    }
+
+    .theme-toggle:hover {
+      transform: scale(1.2);
+    }
+
     .card {
-      background: white;
+      background: var(--card);
       padding: 2rem;
       border-radius: 12px;
-      box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
       width: 400px;
+      transition: background 0.3s, color 0.3s;
     }
+
     .card h2 {
       font-size: 1.25rem;
       margin-bottom: 1rem;
     }
+
     input, textarea, button {
       width: 100%;
       margin-top: 0.75rem;
       padding: 0.75rem;
       font-size: 1rem;
       border-radius: 6px;
-      border: 1px solid #ccc;
+      border: 1px solid var(--border);
+      background: var(--input);
+      color: var(--text);
+      transition: background 0.3s, border 0.3s, color 0.3s;
     }
+
+    input::placeholder,
+    textarea::placeholder {
+      color: #888;
+    }
+
     button {
-      background-color: #4CAF50;
+      background-color: var(--primary);
       color: white;
       border: none;
       cursor: pointer;
       transition: background-color 0.3s;
     }
+
     button:disabled {
-      background-color: #ccc;
+      background-color: var(--primary-disabled);
       cursor: not-allowed;
     }
+
     #output {
       margin-top: 1rem;
+      font-size: 0.95rem;
+    }
+
+    a {
+      color: #66ffcc;
     }
   </style>
 </head>
 <body>
+  <button id="themeToggle" class="theme-toggle" title="Toggle Theme">🌙</button>
+
   <div class="card">
     <button id="connectButton">Connect Wallet</button>
 
@@ -67,8 +143,7 @@
 
   <script>
     let signer;
-    const contractAddress = "0xd9145CCE52D386f254917e481eB44e9943F39138"; // Укажи свой адрес контракта
-    const chainId = 710;
+    const contractAddress = "0xd9145CCE52D386f254917e481eB44e9943F39138";
     const contractABI = [
       "function mintNFT(address recipient, string memory tokenURI) public returns (uint256)"
     ];
@@ -78,48 +153,10 @@
 
     connectButton.addEventListener("click", async () => {
       if (typeof window.ethereum !== 'undefined') {
-        await window.ethereum.request({ method: 'eth_requestAccounts' });
-        const network = await window.ethereum.request({ method: 'eth_chainId' });
-
-        if (parseInt(network, 16) !== chainId) {
-          try {
-            await window.ethereum.request({
-              method: 'wallet_switchEthereumChain',
-              params: [{ chainId: '0x2C6' }] // 710 в hex
-            });
-          } catch (switchError) {
-            // Если сеть не добавлена в MetaMask
-            if (switchError.code === 4902) {
-              try {
-                await window.ethereum.request({
-                  method: 'wallet_addEthereumChain',
-                  params: [{
-                    chainId: '0x2C6',
-                    chainName: 'UZH_ETH_PoS',
-                    nativeCurrency: {
-                      name: 'UZHETHs',
-                      symbol: 'UZETHs',
-                      decimals: 18
-                    },
-                    rpcUrls: ['http://rpc-uzheths.blockchain-group.ch:8546'],
-                    blockExplorerUrls: ['http://130.60.24.234:4000']
-                  }]
-                });
-              } catch (addError) {
-                alert("Could not add chain: " + addError.message);
-                return;
-              }
-            } else {
-              alert("Could not switch network: " + switchError.message);
-              return;
-            }
-          }
-        }
-
         const provider = new ethers.BrowserProvider(window.ethereum);
+        await provider.send("eth_requestAccounts", []);
         signer = await provider.getSigner();
         connectButton.innerText = "Wallet Connected";
-
         mintButton.disabled = false;
       } else {
         alert("MetaMask is not installed!");
@@ -163,6 +200,15 @@
         `;
       };
       reader.readAsDataURL(file);
+    });
+
+    // Theme toggle logic
+    const themeBtn = document.getElementById("themeToggle");
+    themeBtn.addEventListener("click", () => {
+      const html = document.documentElement;
+      html.classList.toggle("dark");
+      html.classList.toggle("light");
+      themeBtn.textContent = html.classList.contains("dark") ? "☀️" : "🌙";
     });
   </script>
 </body>
